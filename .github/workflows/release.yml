@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install gvsbuild and build gtk4 and librsvg
+        run: |
+          pip install gvsbuild
+          gvsbuild build librsvg
+          gvsbuild build gtk4
+
+      - name: Store release directory in zip
+        run: >
+          7z a
+          ${{ github.workspace }}/${{ env.release_name }}.zip
+          "C:\gtk-build\gtk\x64\release"
+        env:
+          release_name: "mview6-win-buildenv"
+
+      - name: Determine current date
+        id: date
+        shell: bash
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ steps.date.outputs.date }}
+          commit: ${{ github.sha }}
+          tag: ${{ steps.date.outputs.date }}
+          body: Windows build enviroment for MView6 (${{ steps.date.outputs.date }})
+          makeLatest: true
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: "*.zip"
